@@ -19,7 +19,6 @@ tf.set_random_seed(seed)
 # Settings
 flags = tf.app.flags
 FLAGS = flags.FLAGS
-flags.DEFINE_string('dataset', 'pubmed', 'Dataset string.')  # 'cora', 'citeseer', 'pubmed'
 flags.DEFINE_string('model', 'gcn_mix', 'Model string.')  # 'gcn', 'gcn_appr'
 flags.DEFINE_float('learning_rate', 0.001, 'Initial learning rate.')
 flags.DEFINE_integer('epochs', 200, 'Number of epochs to train.')
@@ -114,11 +113,6 @@ def construct_feeddict_forMixlayers(AXfeatures, support, labels, placeholders):
 def main(rank1):
 
 
-
-    # config = tf.ConfigProto(device_count={"CPU": 4}, # limit to num_cpu_core CPU usage
-    #                 inter_op_parallelism_threads = 1,
-    #                 intra_op_parallelism_threads = 4,
-    #                 log_device_placement=False)
     adj, features, y_train, y_val, y_test,train_index, val_index, test_index = loadRedditFromNPZ("data/")
     adj = adj+adj.T
 
@@ -274,103 +268,6 @@ def transferG2ADJ():
     sp.save_npz("reddit_adj.npz", adj)
 
 
-def test(rank1):
-    # config = tf.ConfigProto(device_count={"CPU": 4}, # limit to num_cpu_core CPU usage
-    #                 inter_op_parallelism_threads = 1,
-    #                 intra_op_parallelism_threads = 4,
-    #                 log_device_placement=False)
-    adj, features, y_train, y_val, y_test, train_index, val_index, test_index = loadRedditFromNPZ("data/")
-    adj = adj + adj.T
-
-    y_train = transferLabel2Onehot(y_train, 41)
-    y_test = transferLabel2Onehot(y_test, 41)
-
-    features = sp.lil_matrix(features)
-
-
-    numNode_train = y_train.shape[0]
-
-    # print("numNode", numNode)
-
-
-
-    if FLAGS.model == 'gcn_mix':
-        normADJ = nontuple_preprocess_adj(adj)
-        normADJ_test = normADJ[test_index, :]
-        # normADJ_val = nontuple_preprocess_adj(adj_val)
-        # normADJ_test = nontuple_preprocess_adj(adj_test)
-
-        num_supports = 2
-        model_func = GCN_APPRO_Mix
-    else:
-        raise ValueError('Invalid argument for model: ' + str(FLAGS.model))
-
-    # Some preprocessing
-    features = nontuple_preprocess_features(features).todense()
-
-    features = normADJ.dot(features)
-
-
-    # Define placeholders
-    placeholders = {
-        'support': tf.sparse_placeholder(tf.float32),
-        'AXfeatures': tf.placeholder(tf.float32, shape=(None, features.shape[1])),
-        'labels': tf.placeholder(tf.float32, shape=(None, y_train.shape[1])),
-        'dropout': tf.placeholder_with_default(0., shape=()),
-        'num_features_nonzero': tf.placeholder(tf.int32)  # helper variable for sparse dropout
-    }
-
-    # Create model
-    model = model_func(placeholders, input_dim=features.shape[-1], logging=True)
-
-    # Initialize session
-    sess = tf.Session()
-
-    # Define model evaluation function
-    def evaluate(features, support, labels, placeholders):
-        t_test = time.time()
-        feed_dict_val = construct_feeddict_forMixlayers(features, support, labels, placeholders)
-        outs_val = sess.run([model.loss, model.accuracy], feed_dict=feed_dict_val)
-        return outs_val[0], outs_val[1], (time.time() - t_test)
-
-    # Init variables
-    sess.run(tf.global_variables_initializer())
-    saver = tf.train.Saver()
-
-    saver.restore(sess, "tmp/tmp_MixModel_uniform.ckpt")
-
-    cost_val = []
-
-    p0 = column_prop(normADJ_test)
-
-
-    t = time.time()
-
-    if rank1 is None:
-        support1 = sparse_to_tuple(normADJ_test)
-        features_inputs = features
-    else:
-        distr = np.nonzero(np.sum(normADJ_test, axis=0))[1]
-        if rank1 > len(distr):
-            q1 = distr
-        else:
-            q1 = np.random.choice(distr, rank1, replace=False, p=p0[distr] / sum(p0[distr]))  # top layer
-
-        # q1 = np.random.choice(np.arange(numNode_train), rank1, p=p0)  # top layer
-
-        support1 = sparse_to_tuple(normADJ_test[:, q1].dot(sp.diags(1.0 / (p0[q1] * rank1))))
-
-
-        features_inputs = features[q1, :]  # selected nodes for approximation
-
-    test_cost, test_acc, test_duration = evaluate(features_inputs, support1, y_test,
-                                                  placeholders)
-
-
-    test_duration = time.time() - t
-    print("rank1 = {}".format(rank1), "cost=", "{:.5f}".format(test_cost),
-          "accuracy=", "{:.5f}".format(test_acc),
-          "test time=", "{:.5f}".format(test_duration))
 
 if __name__=="__main__":
     # main(100)
