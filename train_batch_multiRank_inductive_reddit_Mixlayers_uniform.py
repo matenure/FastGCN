@@ -258,12 +258,17 @@ def transferG2ADJ():
     feat_id_map = json.load(open("reddit/reddit-id_map.json"))
     feat_id_map = {id: val for id, val in feat_id_map.iteritems()}
     numNode = len(feat_id_map)
+    adj = np.zeros((numNode, numNode))
     newEdges0 = [feat_id_map[edge[0]] for edge in G.edges()]
     newEdges1 = [feat_id_map[edge[1]] for edge in G.edges()]
+
+    # for edge in G.edges():
+    #     adj[feat_id_map[edge[0]], feat_id_map[edge[1]]] = 1
     adj = sp.csr_matrix((np.ones((len(newEdges0),)), (newEdges0, newEdges1)), shape=(numNode, numNode))
     sp.save_npz("reddit_adj.npz", adj)
 
 if __name__=="__main__":
-    # main(100)
-    for k in [25, 50, 100, 200, 400]:
-        main(k)
+
+    main(50)
+    # for k in [25, 50, 100, 200, 400]:
+    #     main(k)
