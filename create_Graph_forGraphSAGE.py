@@ -21,48 +21,24 @@ if __name__=="__main__":
     y = y_train+y_val+y_test
     y = np.argmax(y,axis=1)
 
+    train_attr, val_attr, test_attr = ({i: bool(m) for i, m in enumerate(mask)} for mask in (train_mask, val_mask, test_mask))
 
-    for i in range(len(y)):
-        if i in val_index:
-            G.node[i]['val']=True
-            G.node[i]['test']=False
-            G.node[i]['train']=False
-        elif i in test_index:
-            G.node[i]['test']=True
-            G.node[i]['val']=False
-            G.node[i]['train'] = False
-        elif i in train_index:
-            G.node[i]['test']=False
-            G.node[i]['val']=False
-            G.node[i]['train'] = True
-        else:
-            G.node[i]['test'] = False
-            G.node[i]['val'] = False
-            G.node[i]['train'] = False
-
-
+    nx.set_node_attributes(G, train_attr, 'train')
+    nx.set_node_attributes(G, val_attr, 'val')
+    nx.set_node_attributes(G, test_attr, 'test')
+    
     data = json_graph.node_link_data(G)
-    with open("cora/cora0-G.json","wb") as f:
+    with open("%s/%s0-G.json" % (data_name, data_name), "wb") as f:
         json.dump(data,f)
     classMap = {}
     idMap = {}
     for i in range(len(y)):
         classMap[i]=y[i]
         idMap[i] = i
-    with open("cora/cora0-id_map.json","wb") as f:
+
+    with open("%s/%s0-id_map.json" % (data_name, data_name), "wb") as f:
         json.dump(idMap,f)
-    with open("cora/cora0-class_map.json","wb") as f:
+    with open("%s/%s0-class_map.json" % (data_name, data_name), "wb") as f:
         json.dump(classMap,f)
-    np.save(open("cora/cora0-feats.npy","wb"), features.todense())
 
-
-
-
-
-
-
-
-
-
-
-
+    np.save("%s/%s0-feats.npy" % (data_name, data_name), features.todense())
