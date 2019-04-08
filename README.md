@@ -7,6 +7,7 @@ Instructions of the sample codes:
 [For Reddit dataset]
 
 	train_batch_multiRank_inductive_reddit_Mixlayers_sampleA.py is the final model. (precomputated the AH in the bottom layer) The original Reddit data should be transferred into the .npz format using this function: transferRedditDataFormat.
+	Note: By default, this code does no sampling. To enable sampling, change `main(None)` at the bottom to `main(100)`. (The number is the sample size. You can also try other sample sizes)
 
 	train_batch_multiRank_inductive_reddit_Mixlayers_uniform.py is the model for uniform sampling.
 
