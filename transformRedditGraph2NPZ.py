@@ -53,7 +53,7 @@ def transferRedditDataFormat(dataset_dir, output_file):
     ## Logistic gets thrown off by big counts, so log transform num comments and score
     feats[:, 0] = np.log(feats[:, 0] + 1.0)
     feats[:, 1] = np.log(feats[:, 1] - min(np.min(feats[:, 1]), -1))
-    feat_id_map = json.load(open(dataset_dir + "reddit-id_map.json"))
+    feat_id_map = json.load(open(dataset_dir + "/reddit-id_map.json"))
     feat_id_map = {id: val for id, val in feat_id_map.iteritems()}
 
     train_index = [feat_id_map[id] for id in train_ids]
